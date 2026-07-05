@@ -36,15 +36,27 @@ df = results_df[results_df["Model"].isin(selected_models) & results_df["Fingerpr
 # ===================================================================
 st.subheader("Heatmap: Random vs Kennard-Stone")
 
+heatmap_metric = st.selectbox("Heatmap metric", ["R2", "RMSE", "MAE"], index=0)
+heatmap_set = st.radio("Evaluation set", ["Test", "CV", "Train"], horizontal=True)
+heatmap_col = f"{heatmap_metric}_{heatmap_set.lower()}" if heatmap_set != "Test" else f"{heatmap_metric}_test"
+if heatmap_set == "Train":
+    heatmap_col = f"{heatmap_metric}_train"
+elif heatmap_set == "CV":
+    heatmap_col = f"{heatmap_metric}_CV"
+else:
+    heatmap_col = f"{heatmap_metric}_test"
+
 col1, col2 = st.columns(2)
 
 for i, split_name in enumerate(["Random", "Kennard-Stone"]):
     sub = df[df["Split"] == split_name]
-    pivot = sub.pivot_table(index="Model", columns="Fingerprint", values=metric)
-    pivot = pivot.loc[pivot.mean(axis=1).sort_values(ascending=(metric != "R2_test")).index]
+    pivot = sub.pivot_table(index="Model", columns="Fingerprint", values=heatmap_col)
+    ascending = heatmap_metric != "R2"
+    pivot = pivot.loc[pivot.mean(axis=1).sort_values(ascending=ascending).index]
 
-    fig = px.imshow(pivot, text_auto=".3f", color_continuous_scale="RdYlGn" if "R2" in metric else "RdYlGn_r",
-                    aspect="auto", title=f"{split_name} Split — {metric}")
+    cscale = "RdYlGn" if heatmap_metric == "R2" else "RdYlGn_r"
+    fig = px.imshow(pivot, text_auto=".3f", color_continuous_scale=cscale,
+                    aspect="auto", title=f"{split_name} — {heatmap_metric} ({heatmap_set})")
     fig.update_layout(height=500)
     with [col1, col2][i]:
         st.plotly_chart(fig, use_container_width=True)

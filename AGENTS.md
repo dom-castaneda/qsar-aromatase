@@ -274,14 +274,15 @@ Split: random 80/20 (seed=42). Train: 2,732 | Test: 758.
 ## Step 5b: ML Models on Collinearity-Reduced Data
 
 **Notebooks**:
-- `colab_qsar_models_reduced.ipynb` — Regression (16 models × 14 FPs × 2 splits = 448 runs)
-- `colab_qsar_classification_reduced.ipynb` — Classification (16 classifiers × 14 FPs × 2 splits = 448 runs)
+- `colab_qsar_models_reduced.ipynb` — Regression (16 models × 12 FPs × 2 splits = 384 runs)
+- `colab_qsar_classification_reduced.ipynb` — Classification (16 classifiers × 12 FPs × 2 splits = 384 runs)
 
-Uses `data/fingerprints_reduced/` (collinear features removed at |r| > 0.95). Expands to 14 fingerprints (adds ECFP4 and EState_Count which were excluded from the original 12-FP notebooks).
+Uses `data/fingerprints_reduced/` (collinear features removed at |r| > 0.95).
 
-Fixes applied:
-- SVC (RBF) and SVC (Linear) capped at `max_iter=5000` to prevent indefinite runtime on large fingerprints
-- Progress prints every run (not every 48) for immediate feedback
+Fixes applied (all 4 notebooks):
+- All iterative models capped at `max_iter=300` (LogReg, SVC, MLP, HistGB)
+- Cross-validation reduced from 10-fold to 5-fold (halves CV time)
+- Progress prints every run for immediate feedback
 - Output CSVs: `results_all_models_reduced.csv`, `results_classification_reduced.csv`
 
 ---

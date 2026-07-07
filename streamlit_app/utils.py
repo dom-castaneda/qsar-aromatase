@@ -40,6 +40,13 @@ def load_fingerprints(fp_name):
 
 
 @st.cache_data
+def load_filtered_fingerprint(fp_name):
+    """Load a reduced fingerprint CSV (collinear features removed)."""
+    path = PROJECT_ROOT / "data" / "fingerprints_reduced" / f"fingerprints_{fp_name}.csv"
+    return pd.read_csv(path)
+
+
+@st.cache_data
 def compute_descriptors(smiles_series):
     """Compute molecular descriptors from SMILES. Returns DataFrame."""
     from rdkit import Chem, RDLogger

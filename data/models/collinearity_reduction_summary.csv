@@ -1,0 +1,15 @@
+File,Original,Dropped,Kept
+fingerprints_atompairs2d.csv,518,0,518
+fingerprints_atompairs2d_count.csv,455,0,455
+fingerprints_cdk_extended.csv,882,3,879
+fingerprints_cdk_fp.csv,1022,1,1021
+fingerprints_cdk_graphonly.csv,34,25,9
+fingerprints_ecfp4.csv,180,0,180
+fingerprints_estate.csv,25,1,24
+fingerprints_estate_count.csv,25,0,25
+fingerprints_kr.csv,172,38,134
+fingerprints_kr_count.csv,173,45,128
+fingerprints_maccs.csv,114,12,102
+fingerprints_pubchem.csv,309,126,183
+fingerprints_substruct.csv,41,3,38
+fingerprints_substruct_count.csv,43,4,39

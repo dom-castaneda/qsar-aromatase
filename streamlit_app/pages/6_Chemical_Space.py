@@ -118,7 +118,7 @@ with tab2:
         df_filt = df_full[mask].reset_index(drop=True)
 
         # Load selected fingerprint
-        fp_full = pd.read_csv(DATA_DIR / "fingerprints_filtered" / fp_filename)
+        fp_full = pd.read_csv(DATA_DIR / "fingerprints_reduced" / fp_filename)
         fp = fp_full[mask.values].reset_index(drop=True)
         X = np.nan_to_num(fp.iloc[:, 1:].values.astype(np.float32), nan=0.0)
 

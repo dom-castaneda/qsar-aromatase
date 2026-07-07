@@ -179,6 +179,37 @@ Removed features where >95% of values are identical (uninformative for modelling
 
 ---
 
+## Step 3c-ii: Collinearity Removal
+
+**Script**: `09_remove_collinear.py`
+
+Removed one feature from each pair with |Pearson r| > 0.95. Tie-breaking: keeps the feature more correlated with pchembl_value.
+
+- Total features reduced: 3,993 → 3,735 (258 dropped, 291 collinear pairs identified)
+- Output: `data/fingerprints_reduced/` (same filenames, fewer columns)
+- Report: `data/models/collinear_pairs_dropped.csv` (full pair list)
+
+| Fingerprint | Before | After | Dropped |
+|-------------|--------|-------|---------|
+| AtomPairs2D | 518 | 518 | 0 |
+| AP2D_Count | 455 | 455 | 0 |
+| CDK_Extended | 882 | 879 | 3 |
+| CDK_FP | 1022 | 1021 | 1 |
+| CDK_GraphOnly | 34 | 9 | 25 |
+| ECFP4 | 180 | 180 | 0 |
+| E-State | 25 | 24 | 1 |
+| E-State Count | 25 | 25 | 0 |
+| KR | 172 | 134 | 38 |
+| KR_Count | 173 | 128 | 45 |
+| MACCS | 114 | 102 | 12 |
+| PubChem | 309 | 183 | 126 |
+| Substructure | 41 | 38 | 3 |
+| SubstructureCount | 43 | 39 | 4 |
+
+Notable: CDK_GraphOnly lost 74% (massive redundancy from stripped topology). PubChem lost 41%. AtomPairs2D and ECFP4 are collinearity-free.
+
+---
+
 ## Step 3d: Data Splitting
 
 **Script**: `07_data_split.py`
@@ -237,6 +268,49 @@ Split: random 80/20 (seed=42). Train: 2,732 | Test: 758.
 **Output**: `data/models/`
 - `model_results_maccs.csv` — metrics for all 16 models
 - `predictions_maccs.csv` — test set predictions from all models
+
+---
+
+## Step 5b: ML Models on Collinearity-Reduced Data
+
+**Notebooks**:
+- `colab_qsar_models_reduced.ipynb` — Regression (16 models × 14 FPs × 2 splits = 448 runs)
+- `colab_qsar_classification_reduced.ipynb` — Classification (16 classifiers × 14 FPs × 2 splits = 448 runs)
+
+Uses `data/fingerprints_reduced/` (collinear features removed at |r| > 0.95). Expands to 14 fingerprints (adds ECFP4 and EState_Count which were excluded from the original 12-FP notebooks).
+
+Fixes applied:
+- SVC (RBF) and SVC (Linear) capped at `max_iter=5000` to prevent indefinite runtime on large fingerprints
+- Progress prints every run (not every 48) for immediate feedback
+- Output CSVs: `results_all_models_reduced.csv`, `results_classification_reduced.csv`
+
+---
+
+## Step 6: Streamlit Dashboard
+
+**App**: `streamlit_app/`
+
+Multi-page Streamlit dashboard for interactive exploration of results.
+
+### Data Source
+All fingerprint-loading pages use `data/fingerprints_reduced/` (collinearity-removed) as the default data source.
+
+### Pages
+
+| Page | File | Description |
+|------|------|-------------|
+| 6. Chemical Space | `6_Chemical_Space.py` | Lipinski descriptors tab + PCA/t-SNE embeddings tab with fingerprint selector, data dispersity metrics |
+| 10. Model Performance | `10_Model_Performance.py` | Heatmaps (R²/RMSE/MAE/time), scatter comparison (Random vs KS), detailed results table with Num_Descriptors |
+| 11. Molecular Fingerprint | `11_Molecular_Fingerprint.py` | Intra-fingerprint feature correlation heatmap with dropdown selector, correlation distribution, top correlated pairs |
+
+### Page 11 — Molecular Fingerprint (Feature Correlation)
+- Dropdown to select any of 14 fingerprints
+- Pearson correlation heatmap between features within the selected fingerprint
+- Top-variance feature selection for large fingerprints (configurable, default 200)
+- Hierarchical clustering for feature ordering
+- Correlation distribution histogram (|r| values)
+- Summary statistics: mean/median |r|, count of |r| > 0.9 and |r| > 0.7 pairs
+- Top 20 most correlated feature pairs table
 
 ---
 
@@ -308,30 +382,42 @@ qsar_aromatase/
 │   ├── 05f_estate_fingerprint.py          # E-State binary (79 bits)
 │   ├── 05g_estate_count_fingerprint.py    # E-State count (79 values, continuous)
 │   ├── 05h_kr_count_fingerprint.py        # Klekota-Roth count (4860 values)
-│   └── 05i_substruct_count_fingerprint.py # Substructure count (307 values)
+│   ├── 05i_substruct_count_fingerprint.py # Substructure count (307 values)
+│   ├── 06_remove_near_constant.py         # Near-constant feature removal (>95% same value)
+│   ├── 07_data_split.py                   # Random (stratified) + Kennard-Stone splitting
+│   ├── 08_build_models.py                 # 16 regression models (local, MACCS only)
+│   └── 09_remove_collinear.py             # Collinearity removal (|r| > 0.95)
 ├── data/
 │   ├── raw/
 │   │   └── aromatase_bioactivity.csv            # Raw data (5,097 rows)
 │   ├── processed/
+│   │   ├── aromatase_bioactivity_curated.csv    # Curated data with bioactivity_class column
 │   │   ├── aromatase_bioactivity_clean.csv      # Cleaned data (3,774 rows)
 │   │   └── aromatase_fingerprints.csv           # Combined dataset with all fingerprints (3,774 x 7,258)
-│   └── fingerprints/
-│       ├── fingerprints_pubchem.csv             # PubChem CACTVS (molecule_chembl_id + 881 bits)
-│       ├── fingerprints_maccs.csv               # MACCS keys (molecule_chembl_id + 167 bits)
-│       ├── fingerprints_ecfp4.csv               # ECFP4 (molecule_chembl_id + 1024 bits)
-│       ├── fingerprints_substruct.csv           # CDK SubstructureFP (molecule_chembl_id + 307 bits)
-│       ├── fingerprints_kr.csv                  # Klekota-Roth FP (molecule_chembl_id + 4860 bits)
-│       ├── fingerprints_atompairs2d.csv         # AtomPairs2D binary (molecule_chembl_id + 780 bits)
-│       ├── fingerprints_atompairs2d_count.csv   # AtomPairs2D count (molecule_chembl_id + 780 values)
-│       ├── fingerprints_cdk_fp.csv              # CDK Fingerprinter (molecule_chembl_id + 1024 bits)
-│       ├── fingerprints_cdk_extended.csv        # CDK Extended (molecule_chembl_id + 1024 bits)
-│       ├── fingerprints_cdk_graphonly.csv       # CDK GraphOnly (molecule_chembl_id + 1024 bits)
-│       ├── fingerprints_estate.csv              # E-State binary (molecule_chembl_id + 79 bits)
-│       ├── fingerprints_estate_count.csv        # E-State count (molecule_chembl_id + 79 values)
-│       ├── fingerprints_kr_count.csv            # KR Count (molecule_chembl_id + 4860 values)
-│       └── fingerprints_substruct_count.csv     # Substructure Count (molecule_chembl_id + 307 values)
-└── notebooks/
-    └── eda_aromatase.ipynb               # Exploratory Data Analysis (33 cells, fully executed)
+│   ├── fingerprints/                            # Raw computed fingerprints (14 CSVs)
+│   ├── fingerprints_filtered/                   # After near-constant removal (3,993 features)
+│   ├── fingerprints_reduced/                    # After collinearity removal (3,735 features)
+│   ├── splits/                                  # Train/test split files (Random + KS)
+│   ├── models/
+│   │   ├── results_all_models.csv               # Full results (384 rows × 13 columns)
+│   │   ├── results_by_config/                   # 72 separate CSV files per config
+│   │   └── collinear_pairs_dropped.csv          # Collinearity report
+│   └── figures/                                 # EDA and descriptor figures
+├── notebooks/
+│   ├── eda_aromatase.ipynb                      # Exploratory Data Analysis
+│   ├── colab_qsar_models.ipynb                  # 16 regressors × 12 FPs × 2 splits (Colab)
+│   ├── colab_qsar_models_reduced.ipynb          # 16 regressors × 14 FPs × 2 splits, collinear-reduced (Colab)
+│   ├── colab_qsar_classification.ipynb          # 16 classifiers (Colab)
+│   ├── colab_qsar_classification_reduced.ipynb  # 16 classifiers × 14 FPs × 2 splits, collinear-reduced (Colab)
+│   └── colab_split_visualization.ipynb          # PCA/t-SNE split visualizations (Colab)
+├── streamlit_app/                               # Multi-page Streamlit dashboard
+│   ├── utils.py                                 # Shared helpers (loads fingerprints_reduced/)
+│   └── pages/
+│       ├── 6_Chemical_Space.py                  # Lipinski + PCA/t-SNE tabs
+│       ├── 10_Model_Performance.py              # Heatmaps, scatter, detailed table
+│       └── 11_Molecular_Fingerprint.py          # Intra-FP feature correlation heatmap
+├── README.md
+└── requirements.txt
 ```
 
 All scripts use relative paths and should be run from the `scripts/` directory.
@@ -347,3 +433,22 @@ All scripts use relative paths and should be run from the `scripts/` directory.
 - `scipy` — Statistical tests (Pearson, point-biserial)
 - `scikit-learn` — PCA, t-SNE
 - `nbformat` — Programmatic notebook generation
+
+---
+
+## To-Do
+
+1. **Run regression/classification models on collinearity-reduced data**
+   - Execute `colab_qsar_models_reduced.ipynb` (16 regressors × 14 FPs × 2 splits = 448 runs)
+   - Execute `colab_qsar_classification_reduced.ipynb` (16 classifiers × 14 FPs × 2 splits = 448 runs)
+   - Compare results against the original (filtered-only) fingerprint results
+
+2. **Feature importance analysis**
+   - Identify which fingerprint bits/features contribute most to model predictions
+   - Methods: tree-based importances (RF, XGBoost), permutation importance, SHAP values
+   - Rank features across fingerprint types and models
+
+3. **Statistical comparison of the 3 bioactivity classes**
+   - Compare molecular descriptor distributions across active, intermediate, and inactive classes
+   - Statistical tests: Kruskal-Wallis (non-parametric) or one-way ANOVA with post-hoc pairwise tests
+   - Identify descriptors/features that significantly differentiate classes

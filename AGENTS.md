@@ -281,6 +281,7 @@ Uses `data/fingerprints_reduced/` (collinear features removed at |r| > 0.95).
 
 Fixes applied (all 4 notebooks):
 - All iterative models capped at `max_iter=300` (LogReg, SVC, MLP, HistGB)
+- Tree ensembles reduced to `n_estimators=200` (RF, Extra Trees, GB, XGBoost, AdaBoost)
 - Cross-validation reduced from 10-fold to 5-fold (halves CV time)
 - Progress prints every run for immediate feedback
 - Output CSVs: `results_all_models_reduced.csv`, `results_classification_reduced.csv`
@@ -407,9 +408,9 @@ qsar_aromatase/
 ├── notebooks/
 │   ├── eda_aromatase.ipynb                      # Exploratory Data Analysis
 │   ├── colab_qsar_models.ipynb                  # 16 regressors × 12 FPs × 2 splits (Colab)
-│   ├── colab_qsar_models_reduced.ipynb          # 16 regressors × 14 FPs × 2 splits, collinear-reduced (Colab)
+│   ├── colab_qsar_models_reduced.ipynb          # 16 regressors × 12 FPs × 2 splits, collinear-reduced (Colab)
 │   ├── colab_qsar_classification.ipynb          # 16 classifiers (Colab)
-│   ├── colab_qsar_classification_reduced.ipynb  # 16 classifiers × 14 FPs × 2 splits, collinear-reduced (Colab)
+│   ├── colab_qsar_classification_reduced.ipynb  # 16 classifiers × 12 FPs × 2 splits, collinear-reduced (Colab)
 │   └── colab_split_visualization.ipynb          # PCA/t-SNE split visualizations (Colab)
 ├── streamlit_app/                               # Multi-page Streamlit dashboard
 │   ├── utils.py                                 # Shared helpers (loads fingerprints_reduced/)
@@ -440,8 +441,8 @@ All scripts use relative paths and should be run from the `scripts/` directory.
 ## To-Do
 
 1. **Run regression/classification models on collinearity-reduced data**
-   - Execute `colab_qsar_models_reduced.ipynb` (16 regressors × 14 FPs × 2 splits = 448 runs)
-   - Execute `colab_qsar_classification_reduced.ipynb` (16 classifiers × 14 FPs × 2 splits = 448 runs)
+   - Execute `colab_qsar_models_reduced.ipynb` (16 regressors × 12 FPs × 2 splits = 384 runs)
+   - Execute `colab_qsar_classification_reduced.ipynb` (16 classifiers × 12 FPs × 2 splits = 384 runs)
    - Compare results against the original (filtered-only) fingerprint results
 
 2. **Feature importance analysis**

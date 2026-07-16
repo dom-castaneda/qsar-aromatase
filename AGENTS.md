@@ -286,6 +286,34 @@ Fixes applied (all 4 notebooks):
 - Progress prints every run for immediate feedback
 - Output CSVs: `results_all_models_reduced.csv`, `results_classification_reduced.csv`
 
+### Results Summary (all 4 notebooks, 384 runs each)
+
+**Regression — Best models (test R²):**
+
+| # | Model | Fingerprint | Split | R² | RMSE |
+|---|-------|-------------|-------|-----|------|
+| 1 | Extra Trees | AP2D_Count | Random | 0.6967 | 0.7128 |
+| 2 | Hist Gradient Boosting | AP2D_Count | Random | 0.6906 | 0.7199 |
+| 3 | XGBoost | AtomPairs2D | Random | 0.6852 | 0.7262 |
+| 4 | Hist Gradient Boosting | AtomPairs2D | Random | 0.6829 | 0.7288 |
+| 5 | XGBoost | AP2D_Count | Random | 0.6764 | 0.7362 |
+
+**Classification — Best models (test Balanced Accuracy):**
+
+| # | Model | Fingerprint | Split | BalAcc | MCC |
+|---|-------|-------------|-------|--------|-----|
+| 1 | Extra Trees | AP2D_Count | Random | 0.6883 | 0.5401 |
+| 2 | Random Forest | AtomPairs2D | Random | 0.6858 | 0.5387 |
+| 3 | XGBoost | AP2D_Count | Kennard-Stone | 0.6840 | 0.5285 |
+| 4 | Hist Gradient Boosting | AtomPairs2D | Random | 0.6836 | 0.5409 |
+| 5 | Extra Trees | AtomPairs2D | Random | 0.6822 | 0.5315 |
+
+**Key findings:**
+- AtomPairs2D (binary + count) dominates both tasks
+- Tree ensembles (Extra Trees, HistGB, XGBoost) consistently top-performing
+- Random split slightly outperforms Kennard-Stone
+- Collinearity removal had no effect on AP2D (0 pairs dropped) — results identical between filtered and reduced
+
 ---
 
 ## Step 6: Streamlit Dashboard

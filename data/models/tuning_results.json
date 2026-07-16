@@ -1,0 +1,38 @@
+{
+  "regression": {
+    "best_params": {
+      "n_estimators": 1000,
+      "min_samples_split": 15,
+      "min_samples_leaf": 1,
+      "max_features": 0.3,
+      "max_depth": 20
+    },
+    "best_cv_r2": 0.36202605622516754,
+    "test_r2": 0.6762375226638994,
+    "test_rmse": 0.7364419077631968,
+    "test_mae": 0.5673505953246845,
+    "train_r2": 0.8498286658289227,
+    "baseline_r2": 0.6967,
+    "tuning_time_min": 26.8
+  },
+  "classification": {
+    "best_params": {
+      "n_estimators": 800,
+      "min_samples_split": 2,
+      "min_samples_leaf": 1,
+      "max_features": 0.3,
+      "max_depth": 20
+    },
+    "best_cv_balacc": 0.5677847951272695,
+    "test_balacc": 0.6896091245594459,
+    "test_mcc": 0.5432997270056498,
+    "test_f1": 0.6979911292455965,
+    "train_balacc": 0.9134551975951212,
+    "baseline_balacc": 0.6883,
+    "tuning_time_min": 26.0
+  },
+  "fingerprint": "AP2D_Count",
+  "split": "Random",
+  "n_iter": 100,
+  "n_folds": 5
+}

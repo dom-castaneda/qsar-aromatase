@@ -316,6 +316,39 @@ Fixes applied (all 4 notebooks):
 
 ---
 
+## Step 5c: Hyperparameter Tuning
+
+**Notebook**: `colab_hyperparameter_tuning.ipynb`
+
+RandomizedSearchCV (100 iterations, 5-fold CV) on the best model (Extra Trees on AP2D_Count, Random split).
+
+### Search Space
+- `n_estimators`: [200, 500, 800, 1000]
+- `max_depth`: [None, 20, 30, 50, 70]
+- `min_samples_split`: [2, 5, 10, 15]
+- `min_samples_leaf`: [1, 2, 4, 6]
+- `max_features`: ["sqrt", "log2", 0.3, 0.5, 0.7, None]
+
+### Regression Results
+- **Best params**: n_estimators=1000, min_samples_split=15, min_samples_leaf=1, max_features=0.3, max_depth=20
+- **Tuned**: R²=0.676, RMSE=0.736 (train R²=0.850)
+- **Baseline**: R²=0.697, RMSE=0.713
+- **Outcome**: Tuning did not improve over defaults (slight decrease: R² -0.021)
+
+### Classification Results
+- **Best params**: n_estimators=800, min_samples_split=2, min_samples_leaf=1, max_features=0.3, max_depth=20
+- **Tuned**: BalAcc=0.690, MCC=0.543, F1=0.698 (train BalAcc=0.913)
+- **Baseline**: BalAcc=0.688, MCC=0.540
+- **Outcome**: Marginal improvement (BalAcc +0.001, MCC +0.003)
+
+### Conclusion
+Default Extra Trees parameters are near-optimal for this dataset. The `max_features=0.3` finding is notable — using 30% of features per split instead of all features (default) provides similar test performance with reduced overfitting risk.
+
+**Output**: `data/models/tuning_results.json`
+Runtime: ~27 min each (regression + classification) on A100.
+
+---
+
 ## Step 6: Streamlit Dashboard
 
 **App**: `streamlit_app/`
@@ -395,6 +428,9 @@ Comprehensive EDA of the curated aromatase bioactivity dataset (3,774 records, 3
 ```
 qsar_aromatase/
 ├── AGENTS.md
+├── README.md
+├── requirements.txt
+├── data.zip
 ├── scripts/
 │   ├── 01_fetch_aromatase_bioactivity.py  # Fetches raw bioactivity data from ChEMBL API
 │   ├── 02_clean_aromatase_data.py         # InChIKey generation, dedup, SD filter, mean aggregation
@@ -414,6 +450,7 @@ qsar_aromatase/
 │   ├── 05h_kr_count_fingerprint.py        # Klekota-Roth count (4860 values)
 │   ├── 05i_substruct_count_fingerprint.py # Substructure count (307 values)
 │   ├── 06_remove_near_constant.py         # Near-constant feature removal (>95% same value)
+│   ├── 06_remove_low_variance.py          # Low-variance filter (alternative)
 │   ├── 07_data_split.py                   # Random (stratified) + Kennard-Stone splitting
 │   ├── 08_build_models.py                 # 16 regression models (local, MACCS only)
 │   └── 09_remove_collinear.py             # Collinearity removal (|r| > 0.95)
@@ -429,25 +466,42 @@ qsar_aromatase/
 │   ├── fingerprints_reduced/                    # After collinearity removal (3,735 features)
 │   ├── splits/                                  # Train/test split files (Random + KS)
 │   ├── models/
-│   │   ├── results_all_models.csv               # Full results (384 rows × 13 columns)
+│   │   ├── results_all_models.csv               # Regression results (384 rows × 13 columns)
+│   │   ├── results_all_models_reduced.csv       # Regression results on reduced FPs
+│   │   ├── results_classification.csv           # Classification results (384 rows × 16 columns)
+│   │   ├── results_classification_reduced.csv   # Classification results on reduced FPs
+│   │   ├── tuning_results.json                  # Hyperparameter tuning output
+│   │   ├── model_results_maccs.csv              # Local MACCS-only results
+│   │   ├── predictions_maccs.csv                # Local MACCS-only predictions
 │   │   ├── results_by_config/                   # 72 separate CSV files per config
-│   │   └── collinear_pairs_dropped.csv          # Collinearity report
+│   │   ├── collinear_pairs_dropped.csv          # Collinearity report
+│   │   ├── collinearity_reduction_summary.csv   # Per-FP reduction summary
+│   │   └── collinearity_summary.csv             # Overall collinearity stats
 │   └── figures/                                 # EDA and descriptor figures
 ├── notebooks/
 │   ├── eda_aromatase.ipynb                      # Exploratory Data Analysis
 │   ├── colab_qsar_models.ipynb                  # 16 regressors × 12 FPs × 2 splits (Colab)
 │   ├── colab_qsar_models_reduced.ipynb          # 16 regressors × 12 FPs × 2 splits, collinear-reduced (Colab)
-│   ├── colab_qsar_classification.ipynb          # 16 classifiers (Colab)
+│   ├── colab_qsar_classification.ipynb          # 16 classifiers × 12 FPs × 2 splits (Colab)
 │   ├── colab_qsar_classification_reduced.ipynb  # 16 classifiers × 12 FPs × 2 splits, collinear-reduced (Colab)
+│   ├── colab_hyperparameter_tuning.ipynb        # RandomizedSearchCV on Extra Trees (Colab)
 │   └── colab_split_visualization.ipynb          # PCA/t-SNE split visualizations (Colab)
-├── streamlit_app/                               # Multi-page Streamlit dashboard
+├── streamlit_app/
+│   ├── app.py                                   # Main app entry point
 │   ├── utils.py                                 # Shared helpers (loads fingerprints_reduced/)
 │   └── pages/
+│       ├── 1_Overview.py
+│       ├── 2_Bioactivity.py
+│       ├── 3_Data_Quality.py
+│       ├── 4_Temporal.py
+│       ├── 5_Molecular_Properties.py
 │       ├── 6_Chemical_Space.py                  # Lipinski + PCA/t-SNE tabs
+│       ├── 7_Fingerprints.py
+│       ├── 8_Correlations.py
+│       ├── 9_QSAR_Readiness.py
 │       ├── 10_Model_Performance.py              # Heatmaps, scatter, detailed table
 │       └── 11_Molecular_Fingerprint.py          # Intra-FP feature correlation heatmap
-├── README.md
-└── requirements.txt
+└── .cortex/                                     # Cortex Code plans (not tracked)
 ```
 
 All scripts use relative paths and should be run from the `scripts/` directory.
@@ -468,17 +522,22 @@ All scripts use relative paths and should be run from the `scripts/` directory.
 
 ## To-Do
 
-1. **Run regression/classification models on collinearity-reduced data**
-   - Execute `colab_qsar_models_reduced.ipynb` (16 regressors × 12 FPs × 2 splits = 384 runs)
-   - Execute `colab_qsar_classification_reduced.ipynb` (16 classifiers × 12 FPs × 2 splits = 384 runs)
-   - Compare results against the original (filtered-only) fingerprint results
-
-2. **Feature importance analysis**
+1. ~~**Run regression/classification models on collinearity-reduced data**~~ ✓ Done
+2. ~~**Hyperparameter tuning**~~ ✓ Done (defaults near-optimal)
+3. **Feature importance analysis**
    - Identify which fingerprint bits/features contribute most to model predictions
    - Methods: tree-based importances (RF, XGBoost), permutation importance, SHAP values
    - Rank features across fingerprint types and models
 
-3. **Statistical comparison of the 3 bioactivity classes**
+4. **Statistical comparison of the 3 bioactivity classes**
    - Compare molecular descriptor distributions across active, intermediate, and inactive classes
    - Statistical tests: Kruskal-Wallis (non-parametric) or one-way ANOVA with post-hoc pairwise tests
    - Identify descriptors/features that significantly differentiate classes
+
+5. **Applicability domain**
+   - PCA bounding box on AP2D_Count fingerprint (training set defines boundaries)
+   - Flag query molecules outside the training chemical space
+
+6. **Serialize final model + build SMILES prediction page**
+   - Save trained Extra Trees model (default params) + feature column list
+   - Build Streamlit page: SMILES input → fingerprint → predict → display

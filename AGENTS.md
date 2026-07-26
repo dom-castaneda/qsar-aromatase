@@ -363,8 +363,11 @@ All fingerprint-loading pages use `data/fingerprints_reduced/` (collinearity-rem
 | Page | File | Description |
 |------|------|-------------|
 | 6. Chemical Space | `6_Chemical_Space.py` | Lipinski descriptors tab + PCA/t-SNE embeddings tab with fingerprint selector, data dispersity metrics |
-| 10. Model Performance | `10_Model_Performance.py` | Heatmaps (R²/RMSE/MAE/time), scatter comparison (Random vs KS), detailed results table with Num_Descriptors |
-| 11. Molecular Fingerprint | `11_Molecular_Fingerprint.py` | Intra-fingerprint feature correlation heatmap with dropdown selector, correlation distribution, top correlated pairs |
+| 10. Model Performance | `10_Model_Performance.py` | Regression/Classification toggle, heatmaps, scatter comparison, detailed table |
+| 11. Molecular Fingerprint | `11_Molecular_Fingerprint.py` | Intra-fingerprint feature correlation heatmap with dropdown selector |
+| 12. Feature Importance | `12_Feature_Importance.py` | Gini + Permutation importance bar charts, scatter, top features table |
+| 13. Hyperparameter Tuning | `13_Hyperparameter_Tuning.py` | Default vs tuned comparison, best params, conclusion |
+| 14. Applicability Domain | `14_Applicability_Domain.py` | PCA bounding box, coverage metrics, interactive PC1 vs PC2 scatter |
 
 ### Page 11 — Molecular Fingerprint (Feature Correlation)
 - Dropdown to select any of 14 fingerprints
@@ -500,7 +503,10 @@ qsar_aromatase/
 │       ├── 8_Correlations.py
 │       ├── 9_QSAR_Readiness.py
 │       ├── 10_Model_Performance.py              # Heatmaps, scatter, detailed table
-│       └── 11_Molecular_Fingerprint.py          # Intra-FP feature correlation heatmap
+│       ├── 11_Molecular_Fingerprint.py          # Intra-FP feature correlation heatmap
+│       ├── 12_Feature_Importance.py             # Gini + Permutation importance
+│       ├── 13_Hyperparameter_Tuning.py          # Default vs tuned comparison
+│       └── 14_Applicability_Domain.py           # PCA bounding box AD analysis
 └── .cortex/                                     # Cortex Code plans (not tracked)
 ```
 

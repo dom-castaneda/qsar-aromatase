@@ -12,14 +12,30 @@ from utils import PROJECT_ROOT
 st.set_page_config(page_title="Model Performance", layout="wide")
 st.title("10. Model Performance — Random vs Kennard-Stone")
 
+# Task toggle
+task_type = st.radio("Task", ["Regression", "Classification"], horizontal=True)
+
 
 @st.cache_data
-def load_results():
-    path = PROJECT_ROOT / "data" / "models" / "results_all_models.csv"
+def load_results(task):
+    if task == "Regression":
+        path = PROJECT_ROOT / "data" / "models" / "results_all_models.csv"
+    else:
+        path = PROJECT_ROOT / "data" / "models" / "results_classification.csv"
     return pd.read_csv(path)
 
 
-results_df = load_results()
+results_df = load_results(task_type)
+
+# Set metrics based on task
+if task_type == "Regression":
+    available_metrics = ["R2_test", "RMSE_test", "MAE_test", "R2_CV", "RMSE_CV", "MAE_CV"]
+    heatmap_metrics = ["R2", "RMSE", "MAE"]
+    default_metric_idx = 0
+else:
+    available_metrics = ["BalAcc_test", "MCC_test", "F1_test", "BalAcc_CV", "MCC_CV", "F1_CV"]
+    heatmap_metrics = ["BalAcc", "MCC", "F1"]
+    default_metric_idx = 0
 
 # Sidebar filters
 st.sidebar.header("Filters")
@@ -28,7 +44,7 @@ all_fps = sorted(results_df["Fingerprint"].unique())
 
 selected_models = st.sidebar.multiselect("Models", all_models, default=all_models)
 selected_fps = st.sidebar.multiselect("Fingerprints", all_fps, default=all_fps)
-metric = st.sidebar.selectbox("Primary Metric", ["R2_test", "RMSE_test", "MAE_test", "R2_CV", "RMSE_CV", "MAE_CV"])
+metric = st.sidebar.selectbox("Primary Metric", available_metrics)
 
 # Filter
 df = results_df[results_df["Model"].isin(selected_models) & results_df["Fingerprint"].isin(selected_fps)]
@@ -39,16 +55,21 @@ with st.container(border=True):
     st.caption("Compares model performance across all fingerprint types for both splitting strategies. "
                "Each cell shows the metric value for a specific model-fingerprint combination.")
 
-    heatmap_metric = st.selectbox("Heatmap metric", ["R2", "RMSE", "MAE"], index=0)
+    heatmap_metric = st.selectbox("Heatmap metric", heatmap_metrics, index=0)
     heatmap_set = st.radio("Evaluation set", ["Test", "CV", "Train"], horizontal=True)
     perf_sort = st.radio("Ordering", ["Alphabetical", "By performance"], horizontal=True, key="perf_sort")
-    heatmap_col = f"{heatmap_metric}_{heatmap_set.lower()}" if heatmap_set != "Test" else f"{heatmap_metric}_test"
+
     if heatmap_set == "Train":
         heatmap_col = f"{heatmap_metric}_train"
     elif heatmap_set == "CV":
         heatmap_col = f"{heatmap_metric}_CV"
     else:
         heatmap_col = f"{heatmap_metric}_test"
+
+    # Check column exists
+    if heatmap_col not in df.columns:
+        st.warning(f"Column '{heatmap_col}' not found in data.")
+        st.stop()
 
     col1, col2 = st.columns(2)
 
@@ -58,11 +79,12 @@ with st.container(border=True):
         if perf_sort == "Alphabetical":
             pivot = pivot.sort_index(axis=0).sort_index(axis=1)
         else:
-            ascending = heatmap_metric != "R2"
+            ascending = heatmap_metric in ("RMSE", "MAE")
             pivot = pivot.loc[pivot.mean(axis=1).sort_values(ascending=ascending).index]
             pivot = pivot[pivot.mean(axis=0).sort_values(ascending=ascending).index]
 
-        cscale = "RdYlGn" if heatmap_metric == "R2" else "RdYlGn_r"
+        higher_better = heatmap_metric not in ("RMSE", "MAE")
+        cscale = "RdYlGn" if higher_better else "RdYlGn_r"
         fig = px.imshow(pivot, text_auto=".3f", color_continuous_scale=cscale,
                         aspect="auto", title=f"{split_name} — {heatmap_metric} ({heatmap_set})")
         fig.update_layout(height=500)
@@ -131,15 +153,23 @@ with st.container(border=True):
         sub = df[df["Split"] == split_name].dropna(subset=[metric])
         if len(sub) == 0:
             continue
-        if "R2" in metric:
+        higher_better = metric not in [c for c in df.columns if "RMSE" in c or "MAE" in c]
+        if higher_better:
             best = sub.loc[sub.groupby("Fingerprint")[metric].idxmax()]
         else:
             best = sub.loc[sub.groupby("Fingerprint")[metric].idxmin()]
-        best = best.sort_values(metric, ascending=("R2" not in metric))
+        best = best.sort_values(metric, ascending=(not higher_better))
+
+        # Pick display columns based on task
+        if task_type == "Regression":
+            show_cols = ["Fingerprint", "Model", "R2_test", "RMSE_test", "MAE_test"]
+        else:
+            show_cols = ["Fingerprint", "Model", "BalAcc_test", "MCC_test", "F1_test"]
+        show_cols = [c for c in show_cols if c in best.columns]
 
         with [col1, col2][i]:
             st.markdown(f"**{split_name} Split**")
-            st.dataframe(best[["Fingerprint", "Model", "R2_test", "RMSE_test", "MAE_test"]].reset_index(drop=True),
+            st.dataframe(best[show_cols].reset_index(drop=True),
                          use_container_width=True, hide_index=True)
 
 # ===================================================================
@@ -151,19 +181,20 @@ with st.container(border=True):
     rank_sort = st.radio("Ordering", ["Alphabetical", "By performance"], horizontal=True, key="rank_sort")
 
     rank_metric = metric
+    higher_is_better = "RMSE" not in rank_metric and "MAE" not in rank_metric
     for split_name in ["Random", "Kennard-Stone"]:
         sub = df[df["Split"] == split_name].dropna(subset=[rank_metric])
         avg = sub.groupby("Model")[rank_metric].mean()
         if rank_sort == "Alphabetical":
             avg = avg.sort_index()
         else:
-            avg = avg.sort_values(ascending=("R2" not in rank_metric))
+            avg = avg.sort_values(ascending=(not higher_is_better))
 
         fig_rank = px.bar(x=avg.values, y=avg.index, orientation="h",
                           labels={"x": f"Mean {rank_metric} (across fingerprints)", "y": "Model"},
                           title=f"{split_name} — Mean {rank_metric} per Model",
                           color=avg.values,
-                          color_continuous_scale="RdYlGn" if "R2" in rank_metric else "RdYlGn_r")
+                          color_continuous_scale="RdYlGn" if higher_is_better else "RdYlGn_r")
         cat_order = "category ascending" if rank_sort == "Alphabetical" else "array"
         fig_rank.update_layout(height=450, showlegend=False, yaxis=dict(categoryorder=cat_order))
         st.plotly_chart(fig_rank, use_container_width=True)
@@ -192,7 +223,7 @@ with st.container(border=True):
     df["Num_Descriptors"] = df["Fingerprint"].map(FP_DESCRIPTOR_COUNT)
 
     sort_col = st.selectbox("Sort by", [metric, "Model", "Fingerprint", "Split", "Num_Descriptors"], index=0)
-    ascending = "R2" not in sort_col
+    ascending = "RMSE" in sort_col or "MAE" in sort_col or sort_col in ("Model", "Fingerprint", "Split")
     st.dataframe(df.sort_values(sort_col, ascending=ascending).reset_index(drop=True),
                  use_container_width=True, height=400)
 
@@ -202,16 +233,31 @@ with st.container(border=True):
     st.caption("The single best-performing model configuration across all 384 runs, "
                "with full train/CV/test metrics and overfitting assessment.")
 
-    valid = results_df.dropna(subset=["R2_test"])
-    best_overall = valid.loc[valid["R2_test"].idxmax()]
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Best Model", best_overall["Model"])
-    c2.metric("Fingerprint", best_overall["Fingerprint"])
-    c3.metric("Split", best_overall["Split"])
-    c4.metric("Test R²", f"{best_overall['R2_test']:.4f}")
+    if task_type == "Regression":
+        valid = results_df.dropna(subset=["R2_test"])
+        best_overall = valid.loc[valid["R2_test"].idxmax()]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Best Model", best_overall["Model"])
+        c2.metric("Fingerprint", best_overall["Fingerprint"])
+        c3.metric("Split", best_overall["Split"])
+        c4.metric("Test R²", f"{best_overall['R2_test']:.4f}")
 
-    st.markdown(f"""
-    **Full metrics**: R²={best_overall['R2_test']:.4f}, RMSE={best_overall['RMSE_test']:.4f}, MAE={best_overall['MAE_test']:.4f}  
-    **CV performance**: R²={best_overall['R2_CV']:.4f}, RMSE={best_overall['RMSE_CV']:.4f}  
-    **Training**: R²={best_overall['R2_train']:.4f} (overfitting gap: {best_overall['R2_train']-best_overall['R2_test']:.3f})
-    """)
+        st.markdown(f"""
+        **Full metrics**: R²={best_overall['R2_test']:.4f}, RMSE={best_overall['RMSE_test']:.4f}, MAE={best_overall['MAE_test']:.4f}  
+        **CV performance**: R²={best_overall['R2_CV']:.4f}, RMSE={best_overall['RMSE_CV']:.4f}  
+        **Training**: R²={best_overall['R2_train']:.4f} (overfitting gap: {best_overall['R2_train']-best_overall['R2_test']:.3f})
+        """)
+    else:
+        valid = results_df.dropna(subset=["BalAcc_test"])
+        best_overall = valid.loc[valid["BalAcc_test"].idxmax()]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Best Model", best_overall["Model"])
+        c2.metric("Fingerprint", best_overall["Fingerprint"])
+        c3.metric("Split", best_overall["Split"])
+        c4.metric("Test BalAcc", f"{best_overall['BalAcc_test']:.4f}")
+
+        st.markdown(f"""
+        **Full metrics**: BalAcc={best_overall['BalAcc_test']:.4f}, MCC={best_overall['MCC_test']:.4f}, F1={best_overall['F1_test']:.4f}  
+        **CV performance**: BalAcc={best_overall['BalAcc_CV']:.4f}, MCC={best_overall['MCC_CV']:.4f}  
+        **Training**: BalAcc={best_overall['BalAcc_train']:.4f} (overfitting gap: {best_overall['BalAcc_train']-best_overall['BalAcc_test']:.3f})
+        """)

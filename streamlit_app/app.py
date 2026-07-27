@@ -154,32 +154,46 @@ if smiles_input:
 st.markdown("---")
 with st.expander("About this predictor"):
     st.markdown("""
-    **Data Source**  
-    Bioactivity data for Aromatase (CYP19A1, CHEMBL1978) was retrieved from the ChEMBL database 
-    (Ki, IC50, pIC50 measurements). After curation (deduplication, SD filtering, mean aggregation), 
-    3,290 molecules with exact pchembl values were retained for modelling.
+    **What is this?**  
+    A QSAR (Quantitative Structure-Activity Relationship) model that predicts how strongly a molecule 
+    inhibits Aromatase — an enzyme involved in estrogen production and a key drug target for breast cancer treatment.
     
-    **Molecular Fingerprint**  
-    AtomPairs2D Count (AP2D_Count) — 780 bins hashed from RDKit AtomPairGenerator. 
-    After near-constant feature removal, 455 informative features were used for training.
+    **Data Source**  
+    Bioactivity data for Aromatase (CYP19A1, target ID: CHEMBL1978) was retrieved from 
+    [ChEMBL](https://www.ebi.ac.uk/chembl/), a public database of drug-like molecules and their 
+    measured biological activities. After curation (removing duplicates, filtering inconsistent measurements, 
+    averaging replicates), 3,290 molecules with experimentally measured potency values (pchembl) were used for modelling.
+    
+    **Input Representation (Fingerprint)**  
+    Molecules are converted into numerical vectors using *AtomPairs2D Count* — a fingerprint that encodes 
+    which pairs of atom types exist in the molecule and how far apart they are (topological distance). 
+    Think of it as a fixed-length feature vector (455 dimensions after filtering) where each dimension 
+    counts how often a specific atom-pair pattern occurs. This is analogous to a bag-of-words representation 
+    but for molecular substructures instead of text.
     
     **Machine Learning Model**  
-    Extra Trees Regressor/Classifier (sklearn) with default parameters (n_estimators=200). 
-    Selected as best performer from a screening of 16 algorithms x 12 fingerprints x 2 split strategies (384 configurations).
+    *Extra Trees* (Extremely Randomized Trees) — an ensemble of 200 decision trees, similar to Random Forest 
+    but with random split thresholds for additional regularization. Selected as the best performer from a 
+    systematic comparison of 16 algorithms across 12 fingerprint types and 2 data splitting strategies 
+    (384 total configurations evaluated via 5-fold cross-validation).
     
-    **Performance**  
-    - Regression: R² = 0.697, RMSE = 0.713 (test set, Random 80/20 split)
-    - Classification: Balanced Accuracy = 0.688, MCC = 0.540
+    **Performance (test set, 80/20 random split)**  
+    - Regression: R² = 0.697 (explains ~70% of potency variance), RMSE = 0.713 log units
+    - Classification: Balanced Accuracy = 68.8%, MCC = 0.540
     
-    **Applicability Domain**  
-    PCA bounding box (178 components, 95% variance). A query molecule is flagged as "outside AD" 
-    if any PCA score exceeds the training set min/max — predictions for such molecules may be unreliable.
+    **Applicability Domain (AD)**  
+    Not all molecules can be reliably predicted — only those structurally similar to the training data. 
+    The AD is defined by fitting PCA (178 components, 95% variance) on the training fingerprints and 
+    checking if a new molecule's PCA scores fall within the observed training range. If any component 
+    exceeds the training min/max, the molecule is flagged as "outside AD" and predictions may be unreliable. 
+    96.3% of the held-out test set falls within the AD.
     
-    **Activity Classes**  
-    - Active: pchembl > 7 (IC50 < 100 nM)
-    - Intermediate: 6 <= pchembl <= 7 (IC50 100 nM - 1 uM)
-    - Inactive: pchembl < 6 (IC50 > 1 uM)
+    **Activity Classes (pchembl scale)**  
+    pchembl is the negative log of IC50 in molar units — higher = more potent.
+    - Active: pchembl > 7 (IC50 < 100 nM — strong inhibitor)
+    - Intermediate: 6 ≤ pchembl ≤ 7 (IC50 between 100 nM and 1 μM)
+    - Inactive: pchembl < 6 (IC50 > 1 μM — weak or no inhibition)
     
-    **Reference methodology**: Schaduangrat et al. (2021). ERpred: a web server for the prediction 
-    of subtype-specific estrogen receptor antagonists. PeerJ 9:e11716.
+    **Methodology reference**: Schaduangrat et al. (2021). ERpred: a web server for the prediction 
+    of subtype-specific estrogen receptor antagonists. *PeerJ* 9:e11716.
     """)

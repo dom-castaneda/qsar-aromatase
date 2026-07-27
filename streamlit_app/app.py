@@ -69,6 +69,18 @@ def check_applicability_domain(fp_vector):
 st.title("Aromatase (CYP19A1) Inhibitor Activity Predictor")
 st.markdown("Enter a SMILES structure to predict its bioactivity against Aromatase.")
 
+# Example molecules
+with st.expander("Example SMILES (click to expand, then copy-paste)"):
+    st.markdown("""
+    | Compound | SMILES | Expected Class |
+    |----------|--------|----------------|
+    | **Letrozole** (clinical AI) | `C1=CC(=CC=C1C#N)C(C2=CC=C(C=C2)C#N)N3C=NC=N3` | Active |
+    | **Anastrozole** (clinical AI) | `CC(C1=CC(=CC=C1)C(C)(C#N)C)N2C=NC=N2` | Active |
+    | **Chrysin** (flavonoid) | `C1=CC=C(C=C1)C2=CC(=O)C3=C(O2)C=C(C=C3O)O` | Intermediate |
+    | **Caffeine** | `CN1C=NC2=C1C(=O)N(C(=O)N2C)C` | Inactive |
+    | **Aspirin** | `CC(=O)OC1=CC=CC=C1C(=O)O` | Inactive |
+    """)
+
 # Input
 smiles_input = st.text_input(
     "SMILES",

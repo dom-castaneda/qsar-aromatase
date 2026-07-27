@@ -152,11 +152,10 @@ if smiles_input:
 
 # --- Fine Print ---
 st.markdown("---")
-with st.expander("About this predictor"):
+with st.expander("How it works"):
     st.markdown("""
-    **What is this?**  
-    A QSAR (Quantitative Structure-Activity Relationship) model that predicts how strongly a molecule 
-    inhibits Aromatase — an enzyme involved in estrogen production and a key drug target for breast cancer treatment.
+    This tool predicts whether a given molecule is likely to inhibit Aromatase (CYP19A1), 
+    an enzyme involved in estrogen production and a key drug target for breast cancer treatment.
     
     **Data Source**  
     Bioactivity data for Aromatase (CYP19A1, target ID: CHEMBL1978) was retrieved from 
@@ -193,7 +192,4 @@ with st.expander("About this predictor"):
     - Active: pchembl > 7 (IC50 < 100 nM — strong inhibitor)
     - Intermediate: 6 ≤ pchembl ≤ 7 (IC50 between 100 nM and 1 μM)
     - Inactive: pchembl < 6 (IC50 > 1 μM — weak or no inhibition)
-    
-    **Methodology reference**: Schaduangrat et al. (2021). ERpred: a web server for the prediction 
-    of subtype-specific estrogen receptor antagonists. *PeerJ* 9:e11716.
     """)

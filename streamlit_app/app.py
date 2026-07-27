@@ -66,26 +66,35 @@ def check_applicability_domain(fp_vector):
 
 
 # --- UI ---
-st.title("Aromatase (CYP19A1) Inhibitor Activity Predictor")
-st.markdown("Enter a SMILES structure to predict its bioactivity against Aromatase.")
+st.title("Aromatase Inhibitor Predictor")
+st.markdown(
+    "**Will this molecule block aromatase?** "
+    "Aromatase is an enzyme that produces estrogen — blocking it is a key strategy in treating "
+    "estrogen-driven breast cancer. This tool uses machine learning to predict how potently a molecule "
+    "inhibits aromatase, based on its chemical structure."
+)
+st.markdown(
+    "Paste a **SMILES** string below (a text representation of a molecule's structure) "
+    "and the model will predict its inhibitory potency."
+)
 
 # Example molecules
-with st.expander("Example SMILES (click to expand, then copy-paste)"):
+with st.expander("Example molecules to try (click to expand, then copy a SMILES string)"):
     st.markdown("""
-    | Compound | SMILES | Expected Class |
-    |----------|--------|----------------|
-    | **Letrozole** (clinical AI) | `C1=CC(=CC=C1C#N)C(C2=CC=C(C=C2)C#N)N3C=NC=N3` | Active |
-    | **Anastrozole** (clinical AI) | `CC(C1=CC(=CC=C1)C(C)(C#N)C)N2C=NC=N2` | Active |
-    | **Chrysin** (flavonoid) | `C1=CC=C(C=C1)C2=CC(=O)C3=C(O2)C=C(C=C3O)O` | Intermediate |
-    | **Caffeine** | `CN1C=NC2=C1C(=O)N(C(=O)N2C)C` | Inactive |
-    | **Aspirin** | `CC(=O)OC1=CC=CC=C1C(=O)O` | Inactive |
+    | Compound | SMILES | What it is |
+    |----------|--------|------------|
+    | **Letrozole** | `C1=CC(=CC=C1C#N)C(C2=CC=C(C=C2)C#N)N3C=NC=N3` | Approved breast cancer drug (potent inhibitor) |
+    | **Anastrozole** | `CC(C1=CC(=CC=C1)C(C)(C#N)C)N2C=NC=N2` | Approved breast cancer drug (potent inhibitor) |
+    | **Chrysin** | `C1=CC=C(C=C1)C2=CC(=O)C3=C(O2)C=C(C=C3O)O` | Natural flavonoid (moderate inhibitor) |
+    | **Caffeine** | `CN1C=NC2=C1C(=O)N(C(=O)N2C)C` | Common stimulant (not an inhibitor) |
+    | **Aspirin** | `CC(=O)OC1=CC=CC=C1C(=O)O` | Pain reliever (not an inhibitor) |
     """)
 
 # Input
 smiles_input = st.text_input(
-    "SMILES",
-    placeholder="e.g. C#N/C(=C\\1/C=CC(=CC1)C#N)N1C=NC=N1 (Letrozole)",
-    help="Paste a valid SMILES string for the molecule you want to predict."
+    "Molecule (SMILES notation)",
+    placeholder="e.g. C1=CC(=CC=C1C#N)C(C2=CC=C(C=C2)C#N)N3C=NC=N3",
+    help="SMILES is a text format for representing molecular structures. Try one from the examples above."
 )
 
 if smiles_input:
@@ -122,33 +131,41 @@ if smiles_input:
         with col_results:
             st.subheader("Prediction")
 
-            # Class badge color
-            class_colors = {"active": "green", "intermediate": "orange", "inactive": "red"}
-            class_color = class_colors.get(class_pred, "gray")
-
             c1, c2, c3 = st.columns(3)
-            c1.metric("Predicted pchembl", f"{pchembl_pred:.2f}")
-            c2.metric("Activity Class", class_pred.capitalize())
-            c3.metric("Applicability Domain", "Inside" if inside_ad else "Outside")
+            c1.metric("Potency Score", f"{pchembl_pred:.2f}",
+                      help="pchembl value: higher = more potent. Scale: 4 (very weak) to 10 (extremely potent).")
+            c2.metric("Verdict", class_pred.capitalize(),
+                      help="Active (strong inhibitor), Intermediate (moderate), Inactive (weak/none).")
+            c3.metric("Reliability", "Reliable" if inside_ad else "Uncertain",
+                      help="Whether this molecule is similar enough to training data for a trustworthy prediction.")
 
             if not inside_ad:
                 st.warning(
-                    f"This molecule is **outside the applicability domain** "
-                    f"({n_violated} of {ad_bounds['n_components']} PCA components violated). "
-                    f"The prediction may be unreliable."
+                    f"**Low confidence prediction.** This molecule is structurally different from the "
+                    f"training data ({n_violated} of {ad_bounds['n_components']} structural dimensions exceeded). "
+                    f"Take this result with caution."
                 )
             else:
-                st.success("Molecule is within the training chemical space. Prediction is reliable.")
+                st.success("This molecule is structurally similar to the training data. Prediction is trustworthy.")
 
             # Interpretation
             st.markdown("---")
-            st.markdown("**Interpretation:**")
+            st.markdown("**What this means:**")
             if class_pred == "active":
-                st.markdown(f"Predicted pchembl = **{pchembl_pred:.2f}** (> 7.0) suggests **potent** aromatase inhibition.")
+                st.markdown(
+                    f"With a potency score of **{pchembl_pred:.2f}**, this molecule is predicted to be a "
+                    f"**strong aromatase inhibitor** — comparable to approved drugs like letrozole."
+                )
             elif class_pred == "intermediate":
-                st.markdown(f"Predicted pchembl = **{pchembl_pred:.2f}** (6.0-7.0) suggests **moderate** aromatase inhibition.")
+                st.markdown(
+                    f"With a potency score of **{pchembl_pred:.2f}**, this molecule shows **moderate** "
+                    f"aromatase inhibition — it has some activity but isn't as potent as clinical drugs."
+                )
             else:
-                st.markdown(f"Predicted pchembl = **{pchembl_pred:.2f}** (< 6.0) suggests **weak/no** aromatase inhibition.")
+                st.markdown(
+                    f"With a potency score of **{pchembl_pred:.2f}**, this molecule is predicted to have "
+                    f"**weak or no aromatase inhibition** — unlikely to be useful as an aromatase inhibitor."
+                )
 
 # --- Fine Print ---
 st.markdown("---")

@@ -456,7 +456,11 @@ qsar_aromatase/
 │   ├── 06_remove_low_variance.py          # Low-variance filter (alternative)
 │   ├── 07_data_split.py                   # Random (stratified) + Kennard-Stone splitting
 │   ├── 08_build_models.py                 # 16 regression models (local, MACCS only)
-│   └── 09_remove_collinear.py             # Collinearity removal (|r| > 0.95)
+│   ├── 09_remove_collinear.py             # Collinearity removal (|r| > 0.95)
+│   ├── 11_applicability_domain.py         # PCA bounding box AD analysis
+│   ├── 12_feature_importance.py           # Gini + Permutation importance
+│   ├── 13_class_comparison.py             # Kruskal-Wallis class comparison
+│   └── 14_serialize_model.py              # Serialize final model + AD for prediction
 ├── data/
 │   ├── raw/
 │   │   └── aromatase_bioactivity.csv            # Raw data (5,097 rows)
@@ -469,17 +473,26 @@ qsar_aromatase/
 │   ├── fingerprints_reduced/                    # After collinearity removal (3,735 features)
 │   ├── splits/                                  # Train/test split files (Random + KS)
 │   ├── models/
-│   │   ├── results_all_models.csv               # Regression results (384 rows × 13 columns)
+│   │   ├── final/                               # Serialized model + AD for prediction page
+│   │   │   ├── model_regressor.joblib
+│   │   │   ├── model_classifier.joblib
+│   │   │   ├── ad_scaler.joblib
+│   │   │   ├── ad_pca.joblib
+│   │   │   ├── ad_bounds.json
+│   │   │   ├── feature_columns.json
+│   │   │   └── label_classes.json
+│   │   ├── results_all_models.csv               # Regression results (384 rows)
 │   │   ├── results_all_models_reduced.csv       # Regression results on reduced FPs
-│   │   ├── results_classification.csv           # Classification results (384 rows × 16 columns)
+│   │   ├── results_classification.csv           # Classification results (384 rows)
 │   │   ├── results_classification_reduced.csv   # Classification results on reduced FPs
 │   │   ├── tuning_results.json                  # Hyperparameter tuning output
-│   │   ├── model_results_maccs.csv              # Local MACCS-only results
-│   │   ├── predictions_maccs.csv                # Local MACCS-only predictions
+│   │   ├── feature_importance.csv               # Gini + Permutation importance (455 features)
+│   │   ├── class_comparison_stats.csv           # Kruskal-Wallis results
+│   │   ├── applicability_domain.json            # PCA AD bounding box
 │   │   ├── results_by_config/                   # 72 separate CSV files per config
 │   │   ├── collinear_pairs_dropped.csv          # Collinearity report
-│   │   ├── collinearity_reduction_summary.csv   # Per-FP reduction summary
-│   │   └── collinearity_summary.csv             # Overall collinearity stats
+│   │   ├── collinearity_reduction_summary.csv
+│   │   └── collinearity_summary.csv
 │   └── figures/                                 # EDA and descriptor figures
 ├── notebooks/
 │   ├── eda_aromatase.ipynb                      # Exploratory Data Analysis
@@ -490,7 +503,7 @@ qsar_aromatase/
 │   ├── colab_hyperparameter_tuning.ipynb        # RandomizedSearchCV on Extra Trees (Colab)
 │   └── colab_split_visualization.ipynb          # PCA/t-SNE split visualizations (Colab)
 ├── streamlit_app/
-│   ├── app.py                                   # Main app entry point
+│   ├── app.py                                   # Landing page: SMILES Activity Predictor
 │   ├── utils.py                                 # Shared helpers (loads fingerprints_reduced/)
 │   └── pages/
 │       ├── 1_Overview.py
@@ -502,11 +515,12 @@ qsar_aromatase/
 │       ├── 7_Fingerprints.py
 │       ├── 8_Correlations.py
 │       ├── 9_QSAR_Readiness.py
-│       ├── 10_Model_Performance.py              # Heatmaps, scatter, detailed table
+│       ├── 10_Model_Performance.py              # Regression/Classification toggle
 │       ├── 11_Molecular_Fingerprint.py          # Intra-FP feature correlation heatmap
 │       ├── 12_Feature_Importance.py             # Gini + Permutation importance
 │       ├── 13_Hyperparameter_Tuning.py          # Default vs tuned comparison
-│       └── 14_Applicability_Domain.py           # PCA bounding box AD analysis
+│       ├── 14_Applicability_Domain.py           # PCA bounding box AD analysis
+│       └── 15_Class_Comparison.py               # Kruskal-Wallis statistical comparison
 └── .cortex/                                     # Cortex Code plans (not tracked)
 ```
 
@@ -528,22 +542,11 @@ All scripts use relative paths and should be run from the `scripts/` directory.
 
 ## To-Do
 
-1. ~~**Run regression/classification models on collinearity-reduced data**~~ ✓ Done
-2. ~~**Hyperparameter tuning**~~ ✓ Done (defaults near-optimal)
-3. **Feature importance analysis**
-   - Identify which fingerprint bits/features contribute most to model predictions
-   - Methods: tree-based importances (RF, XGBoost), permutation importance, SHAP values
-   - Rank features across fingerprint types and models
+All major pipeline steps complete:
 
-4. **Statistical comparison of the 3 bioactivity classes**
-   - Compare molecular descriptor distributions across active, intermediate, and inactive classes
-   - Statistical tests: Kruskal-Wallis (non-parametric) or one-way ANOVA with post-hoc pairwise tests
-   - Identify descriptors/features that significantly differentiate classes
-
-5. **Applicability domain**
-   - PCA bounding box on AP2D_Count fingerprint (training set defines boundaries)
-   - Flag query molecules outside the training chemical space
-
-6. **Serialize final model + build SMILES prediction page**
-   - Save trained Extra Trees model (default params) + feature column list
-   - Build Streamlit page: SMILES input → fingerprint → predict → display
+1. ~~**Run regression/classification models on collinearity-reduced data**~~ Done
+2. ~~**Hyperparameter tuning**~~ Done (defaults near-optimal)
+3. ~~**Feature importance analysis**~~ Done (Gini + Permutation, 15/20 overlap)
+4. ~~**Statistical comparison of the 3 bioactivity classes**~~ Done (Kruskal-Wallis, all 8 significant)
+5. ~~**Applicability domain**~~ Done (PCA bounding box, 96.3% coverage)
+6. ~~**Serialize final model + build SMILES prediction page**~~ Done (Extra Trees, landing page)

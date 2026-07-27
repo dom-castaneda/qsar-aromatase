@@ -1,6 +1,6 @@
 # QSAR Modelling of Aromatase (CYP19A1) Inhibitors
 
-A complete Quantitative Structure-Activity Relationship (QSAR) pipeline for predicting the potency of aromatase inhibitors using molecular fingerprints and machine learning.
+A complete Quantitative Structure-Activity Relationship (QSAR) pipeline for predicting the potency of aromatase inhibitors — from raw ChEMBL data to a working web predictor.
 
 ## Why This Matters
 
@@ -11,17 +11,28 @@ Computational prediction of aromatase inhibitory potency can:
 - **Reduce costs** by prioritising the most promising candidates for lab testing
 - **Guide medicinal chemistry** by revealing which molecular features drive potency
 
-## Approach
+## Live Predictor
+
+The Streamlit app includes a **SMILES-to-activity prediction tool** as the landing page:
+- Paste a SMILES string → get predicted pchembl value + activity class (active/intermediate/inactive)
+- Molecular structure rendered via RDKit
+- Applicability domain check flags molecules outside the training chemical space
+
+```bash
+pip install -r requirements.txt
+python -m streamlit run streamlit_app/app.py
+```
+
+## Pipeline
 
 ```
-ChEMBL Data → Cleaning → Fingerprints → Feature Selection → Splitting → ML Models → Evaluation
+ChEMBL Data → Cleaning → Fingerprints → Feature Selection → Splitting → ML Models → Evaluation → Prediction
 ```
 
-### 1. Data Collection
-Bioactivity data (IC50, Ki) retrieved from ChEMBL for 3,399 unique molecules tested against human aromatase. Activity is quantified as **pchembl_value** (= -log10 of IC50/Ki in molar), where higher values mean more potent inhibitors.
+### 1. Data Collection & Curation
+Bioactivity data (IC50, Ki) retrieved from ChEMBL for 3,399 unique molecules tested against human aromatase. After deduplication, SD filtering, and mean aggregation: **3,290 molecules** with exact pchembl values retained for modelling.
 
-### 2. Molecular Fingerprints
-Each molecule's structure is encoded as a binary/count vector using 12 fingerprint types from the PaDEL-Descriptor framework:
+### 2. Molecular Fingerprints (12 types, PaDEL framework)
 
 | Fingerprint | Bits | Encoding |
 |-------------|------|----------|
@@ -39,15 +50,14 @@ Each molecule's structure is encoded as a binary/count vector using 12 fingerpri
 | E-State | 79 | Electrotopological atom types |
 
 ### 3. Feature Selection
-Near-constant features (>95% same value across molecules) are removed, reducing total features from 17,196 to 3,993.
+- **Near-constant removal**: Features with >95% same value removed (17,196 → 3,993)
+- **Collinearity removal**: One feature from each pair with |r| > 0.95 dropped (3,993 → 3,735)
 
 ### 4. Data Splitting
-Two strategies ensure robust evaluation:
-- **Random split** (80/20, stratified) — standard approach
-- **Kennard-Stone** (80/20) — training set maximally spans chemical space
+- **Random split** (80/20, stratified by activity class)
+- **Kennard-Stone** (80/20, maximin distance on ECFP4)
 
-### 5. Machine Learning
-16 regression algorithms are trained on each fingerprint type:
+### 5. Machine Learning (16 algorithms)
 
 | Family | Models |
 |--------|--------|
@@ -59,20 +69,32 @@ Two strategies ensure robust evaluation:
 | Ensemble (Boosting) | Gradient Boosting, XGBoost, Hist GB, AdaBoost |
 | Neural Network | MLP |
 
-### 6. Evaluation
-Models are evaluated with:
-- **R²** (variance explained) — higher is better
-- **RMSE** (root mean squared error) — lower is better
-- **MAE** (mean absolute error) — lower is better
+Both regression (pchembl prediction) and classification (active/intermediate/inactive) tasks evaluated.
 
-Reported on training set, 10-fold cross-validation, and held-out test set.
+### 6. Hyperparameter Tuning
+RandomizedSearchCV (100 iterations, 5-fold CV) on the best model. Conclusion: default parameters are near-optimal.
+
+### 7. Applicability Domain
+PCA bounding box (178 components, 95% variance) on training fingerprints. 96.3% of test molecules fall within the AD.
+
+### 8. Feature Importance
+Gini importance + permutation importance (10 repeats). 15/20 top features overlap between methods.
+
+### 9. Statistical Class Comparison
+Kruskal-Wallis + post-hoc Mann-Whitney U (Bonferroni) on 8 molecular descriptors. All significantly differ between activity classes (p < 0.05). MW has the strongest discriminating power.
 
 ## Key Results
 
 **Best model**: Extra Trees on AtomPairs2D Count fingerprint (Random split)
-- Test R² = 0.694, RMSE = 0.716, MAE = 0.543
 
-Tree-based ensembles (Random Forest, XGBoost, Hist GB) consistently outperform linear models across all fingerprint types. AtomPairs2D fingerprints provide the richest representation for this target.
+| Task | Metric | Score |
+|------|--------|-------|
+| Regression | R² | 0.697 |
+| Regression | RMSE | 0.713 |
+| Classification | Balanced Accuracy | 0.688 |
+| Classification | MCC | 0.540 |
+
+Tree-based ensembles (Extra Trees, XGBoost, Hist GB) consistently outperform linear models. AtomPairs2D fingerprints provide the richest representation for this target.
 
 ## Repository Structure
 
@@ -80,27 +102,41 @@ Tree-based ensembles (Random Forest, XGBoost, Hist GB) consistently outperform l
 ├── scripts/                    # Pipeline scripts (numbered in execution order)
 ├── data/
 │   ├── processed/              # Cleaned bioactivity data
-│   ├── fingerprints/           # Raw computed fingerprints
+│   ├── fingerprints/           # Raw computed fingerprints (14 CSVs)
 │   ├── fingerprints_filtered/  # After near-constant removal
+│   ├── fingerprints_reduced/   # After collinearity removal
 │   ├── splits/                 # Train/test split indices
-│   └── models/                 # Results and predictions
-├── notebooks/                  # Colab notebooks (click to run)
-├── streamlit_app/              # Interactive EDA dashboard
+│   └── models/
+│       ├── final/              # Serialized model + AD components
+│       ├── results_*.csv       # Full model comparison results
+│       └── *.json              # Tuning, AD, feature importance
+├── notebooks/                  # Colab notebooks (click badges to run)
+├── streamlit_app/              # Multi-page Streamlit dashboard + predictor
 └── requirements.txt
 ```
 
-## Quick Start
+## Streamlit Dashboard Pages
 
-### Run the Streamlit dashboard locally
-```bash
-pip install -r requirements.txt
-python -m streamlit run streamlit_app/app.py
-```
+| Page | Content |
+|------|---------|
+| Home | **SMILES Activity Predictor** (landing page) |
+| 1-9 | EDA: Overview, Bioactivity, Data Quality, Temporal, Molecular Properties, Chemical Space, Fingerprints, Correlations, QSAR Readiness |
+| 10 | Model Performance (Regression/Classification toggle) |
+| 11 | Molecular Fingerprint Correlation |
+| 12 | Feature Importance |
+| 13 | Hyperparameter Tuning |
+| 14 | Applicability Domain |
+| 15 | Statistical Class Comparison |
 
-### Run models on Google Colab (GPU accelerated)
-[![Open Models in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dom-castaneda/qsar-aromatase/blob/master/notebooks/colab_qsar_models.ipynb)
+## Google Colab Notebooks
 
-[![Open Split Viz in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dom-castaneda/qsar-aromatase/blob/master/notebooks/colab_split_visualization.ipynb)
+[![Regression Models](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dom-castaneda/qsar-aromatase/blob/master/notebooks/colab_qsar_models.ipynb) Regression (16 models × 12 FPs × 2 splits)
+
+[![Classification Models](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dom-castaneda/qsar-aromatase/blob/master/notebooks/colab_qsar_classification.ipynb) Classification (16 classifiers × 12 FPs × 2 splits)
+
+[![Hyperparameter Tuning](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dom-castaneda/qsar-aromatase/blob/master/notebooks/colab_hyperparameter_tuning.ipynb) Hyperparameter Tuning (Extra Trees)
+
+[![Split Visualization](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/dom-castaneda/qsar-aromatase/blob/master/notebooks/colab_split_visualization.ipynb) PCA/t-SNE Split Visualization
 
 ## Dependencies
 
@@ -109,6 +145,7 @@ python -m streamlit run streamlit_app/app.py
 - RDKit (molecular fingerprint computation)
 - matplotlib, seaborn, plotly (visualization)
 - streamlit (interactive dashboard)
+- joblib (model serialization)
 
 See `requirements.txt` for pinned versions.
 
@@ -117,3 +154,4 @@ See `requirements.txt` for pinned versions.
 - Yap, C.W. (2011). PaDEL-Descriptor: An open source software to calculate molecular descriptors and fingerprints. *J. Comput. Chem.*, 32(7):1466-1474.
 - Klekota, J. & Roth, F.P. (2008). Chemical substructures that enrich for biological activity. *Bioinformatics*, 24(21):2518-2525.
 - Kennard, R.W. & Stone, L.A. (1969). Computer aided design of experiments. *Technometrics*, 11(1):137-148.
+- Schaduangrat, N. et al. (2021). ERpred: a web server for the prediction of subtype-specific estrogen receptor antagonists. *PeerJ*, 9:e11716.

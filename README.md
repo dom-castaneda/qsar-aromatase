@@ -148,10 +148,3 @@ Tree-based ensembles (Extra Trees, XGBoost, Hist GB) consistently outperform lin
 - joblib (model serialization)
 
 See `requirements.txt` for pinned versions.
-
-## References
-
-- Yap, C.W. (2011). PaDEL-Descriptor: An open source software to calculate molecular descriptors and fingerprints. *J. Comput. Chem.*, 32(7):1466-1474.
-- Klekota, J. & Roth, F.P. (2008). Chemical substructures that enrich for biological activity. *Bioinformatics*, 24(21):2518-2525.
-- Kennard, R.W. & Stone, L.A. (1969). Computer aided design of experiments. *Technometrics*, 11(1):137-148.
-- Schaduangrat, N. et al. (2021). ERpred: a web server for the prediction of subtype-specific estrogen receptor antagonists. *PeerJ*, 9:e11716.

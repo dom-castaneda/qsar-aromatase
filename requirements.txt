@@ -12,3 +12,4 @@ xgboost
 rdkit-pypi
 requests
 joblib
+Pillow

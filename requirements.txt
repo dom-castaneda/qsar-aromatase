@@ -11,3 +11,4 @@ plotly>=6.7.0
 xgboost>=3.2.0
 rdkit-pypi>=2024.3.5
 requests>=2.32.3
+joblib>=1.4.0

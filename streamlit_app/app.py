@@ -169,6 +169,7 @@ if smiles_input:
 
 # --- Fine Print ---
 st.markdown("---")
+st.caption("Explore the full analysis (EDA, model comparisons, feature importance) using the sidebar pages.")
 with st.expander("How it works"):
     st.markdown("""
     This tool predicts whether a given molecule is likely to inhibit Aromatase (CYP19A1), 

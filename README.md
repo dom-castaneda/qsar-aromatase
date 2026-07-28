@@ -1,5 +1,7 @@
 # QSAR Modelling of Aromatase (CYP19A1) Inhibitors
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://qsar-aromatase.streamlit.app/)
+
 A complete Quantitative Structure-Activity Relationship (QSAR) pipeline for predicting the potency of aromatase inhibitors — from raw ChEMBL data to a working web predictor.
 
 ## Why This Matters
